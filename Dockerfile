@@ -7,9 +7,11 @@ ENV WINEARCH=win64
 ENV WINEPREFIX=/root/.wine
 
 # Install Wine and dependencies
-RUN dpkg --add-architecture i386 && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dpkg && \
+    dpkg --add-architecture i386 && \
     apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
     wget \
     wine64 \
     wine32 \
@@ -42,14 +44,14 @@ RUN sleep 15 && \
     wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v WebRequestURL /t REG_SZ /d "https://ansorade-backend.onrender.com" /f && \
     wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v WebRequestURL /t REG_SZ /d "https://*.render.com" /f
 
-# Copy MT5 configuration
-COPY config/terminal.ini "/root/.wine/drive_c/Program Files/MetaTrader 5/config/"
+# Copy MT5 configuration (Using bracket syntax for spaces)
+COPY ["config/terminal.ini", "/root/.wine/drive_c/Program Files/MetaTrader 5/config/"]
 
-# Copy Expert Advisor
-COPY experts/ "/root/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/"
+# Copy Expert Advisor (Using bracket syntax for spaces)
+COPY ["experts/", "/root/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/"]
 
 # Create log directory
-RUN mkdir -p "/root/.wine/drive_c/Program Files/MetaTrader 5/Logs"
+RUN mkdir -p /root/.wine/drive_c/Program\ Files/MetaTrader\ 5/Logs
 
 # Install Python dependencies for monitoring
 RUN pip3 install fastapi uvicorn requests
