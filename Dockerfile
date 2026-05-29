@@ -34,10 +34,13 @@ RUN winetricks -q corefonts && \
 # Create MT5 directory
 RUN mkdir -p /root/.wine/drive_c/Program\ Files/MetaTrader\ 5
 
-# Download and install MT5 (FBS)
+# Initialize Wine prefix properly before installing anything
+RUN xvfb-run -a wineboot --init
+
+# Download the official MetaQuotes MT5 installer (More stable than broker wrappers)
 WORKDIR /tmp
-RUN wget -O fbs5setup.exe https://fbs.com/trading-platforms/metatrader5/download && \
-    xvfb-run -a wine fbs5setup.exe /auto /S || true
+RUN wget --user-agent="Mozilla/5.0" -O mt5setup.exe https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe && \
+    xvfb-run -a wine mt5setup.exe /auto
 
 # Wait for installation and set registry permissions
 RUN sleep 15 && \
