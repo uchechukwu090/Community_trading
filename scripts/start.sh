@@ -42,7 +42,9 @@ echo "================================"
 # 1. START API IMMEDIATELY (Satisfies Render's Port Scanner)
 # ---------------------------------------------------------
 echo "Starting health monitoring API on port ${API_PORT}..."
-python3 - << EOF &
+
+# Write the Python code to a file to avoid bash heredoc issues in Docker
+cat > /tmp/api.py << 'EOF'
 from fastapi import FastAPI
 import uvicorn
 import os
@@ -88,12 +90,16 @@ async def test_signal_generator():
     except Exception as e: return {"error": str(e)}
 
 if __name__ == "__main__":
-    port = int(os.getenv("API_PORT", 8000))
-    print(f"Starting health monitor on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning", access_log=False)
+    # Render injects the PORT environment variable
+    port = int(os.environ.get("PORT", 8000))
+    print(f"✅ API successfully listening on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 EOF
+
+# Start the API in the background and log the output
+python3 /tmp/api.py > /tmp/api.log 2>&1 &
 HEALTH_PID=$!
-echo "✅ Health monitor PID: $HEALTH_PID (port ${API_PORT})"
+echo "✅ Health monitor PID: $HEALTH_PID"
 
 # ---------------------------------------------------------
 # 2. SETUP MT5 DIRECTORIES & CONFIG
@@ -195,7 +201,8 @@ while true; do
     
     if ! ps -p $HEALTH_PID > /dev/null 2>&1; then
         echo "⚠️ Health monitor died. Restarting..."
-        # Fast restart logic here if needed
+        python3 /tmp/api.py > /tmp/api.log 2>&1 &
+        HEALTH_PID=$!
     fi
     
     sleep 15
