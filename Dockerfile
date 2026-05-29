@@ -43,13 +43,13 @@ RUN sleep 15 && \
     wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v WebRequestURL /t REG_SZ /d "https://*.render.com" /f
 
 # Copy MT5 configuration
-COPY config/terminal.ini /root/.wine/drive_c/Program\ Files/MetaTrader\ 5/config/
+COPY config/terminal.ini "/root/.wine/drive_c/Program Files/MetaTrader 5/config/"
 
 # Copy Expert Advisor
-COPY experts/ /root/.wine/drive_c/Program\ Files/MetaTrader\ 5/MQL5/Experts/
+COPY experts/ "/root/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/"
 
 # Create log directory
-RUN mkdir -p /root/.wine/drive_c/Program\ Files/MetaTrader\ 5/Logs
+RUN mkdir -p "/root/.wine/drive_c/Program Files/MetaTrader 5/Logs"
 
 # Install Python dependencies for monitoring
 RUN pip3 install fastapi uvicorn requests
