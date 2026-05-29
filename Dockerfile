@@ -41,13 +41,18 @@ RUN xvfb-run -a wineboot --init
 WORKDIR /tmp
 RUN wget --user-agent="Mozilla/5.0" -O mt5setup.exe https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe
 
-# Run installer with manual Xvfb to prevent "X connection broken" crashes
+# Run installer with manual Xvfb (Removed killall, added longer sleep)
 RUN Xvfb :99 -screen 0 1024x768x16 -ac & \
     export DISPLAY=:99 && \
-    sleep 3 && \
-    wine mt5setup.exe /auto || echo "Installer exited (normal for headless)" && \
-    sleep 20 && \
-    killall Xvfb || true
+    sleep 5 && \
+    wine mt5setup.exe /auto || echo "Installer main process exited (normal)" && \
+    echo "Waiting for background installation to complete..." && \
+    sleep 60
+
+# Verify installation (Fails the build if MT5 didn't actually install)
+RUN test -f "/root/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" || \
+    test -f "/root/.wine/drive_c/Program Files (x86)/MetaTrader 5/terminal64.exe" || \
+    (echo "❌ MT5 installation failed! Executable not found." && exit 1)
 
 # Verify installation (This will FAIL the build if MT5 didn't actually install, which is what we want!)
 RUN test -f "/root/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" || \
