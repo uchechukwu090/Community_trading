@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  mt5-trader:
+    build: .
+    container_name: mt5-community-trader
+    environment:
+      - FBS_ACCOUNT=${FBS_ACCOUNT}
+      - FBS_PASSWORD=${FBS_PASSWORD}
+      - FBS_SERVER=FBS-Real
+      - VNC_PASSWORD=${VNC_PASSWORD:-trader}
+      - TZ=UTC
+    volumes:
+      - ./data/mt5:/root/.wine/drive_c/Program Files/MetaTrader 5
+      - ./logs:/var/log/supervisor
+      - ./ea_logs:/root/.wine/drive_c/Program Files/MetaTrader 5/Logs
+    ports:
+      - "5900:5900"  # VNC
+      - "8000:8000"  # Monitoring API
+    restart: unless-stopped
+    shm_size: '1gb'
