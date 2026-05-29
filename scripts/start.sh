@@ -206,3 +206,20 @@ while true; do
     
     sleep 15
 done
+
+# ---------------------------------------------------------
+# 6. AUTO-ENABLE ALGO TRADING (CRITICAL FOR EXECUTION)
+# ---------------------------------------------------------
+echo "Auto-enabling Algo Trading..."
+export DISPLAY=:99
+
+# Find the MT5 window and bring it to focus
+xdotool search --onlyvisible --name "MetaTrader" windowactivate --sync
+sleep 2
+
+# Click the "Algo Trading" button on the top toolbar
+# (Coordinates x=280, y=45 are approximate for the standard 1024x768 layout)
+xdotool mousemove 280 45 click 1
+sleep 1
+xdotool mousemove 280 45 click 1 # Click twice to ensure it toggles ON (Green)
+echo "✅ Algo Trading button clicked."
