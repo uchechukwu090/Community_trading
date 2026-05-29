@@ -69,6 +69,21 @@ async def root():
 async def health():
     return {"status": "healthy", "service": "mt5-trader"}
 
+@app.get("/mt5-logs")
+def mt5_logs():
+    import glob
+    # Find the latest log file
+    log_files = glob.glob("/root/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Files/Community_Trader_*.log")
+    if not log_files:
+        return {"error": "No log files found yet"}
+    
+    latest_log = max(log_files, key=os.path.getctime)
+    
+    with open(latest_log, "r") as f:
+        # Return the last 50 lines
+        lines = f.readlines()
+        return {"file": os.path.basename(latest_log), "logs": lines[-50:]}
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"✅ API successfully listening on port {port}")
