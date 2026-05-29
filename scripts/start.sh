@@ -43,7 +43,6 @@ echo "================================"
 # ---------------------------------------------------------
 echo "Starting health monitoring API on port ${API_PORT}..."
 
-# Write the Python code to a file to avoid bash heredoc issues in Docker
 cat > /tmp/api.py << 'EOF'
 from fastapi import FastAPI
 import uvicorn
@@ -70,33 +69,12 @@ async def root():
 async def health():
     return {"status": "healthy", "service": "mt5-trader"}
 
-@app.get("/test-backend")
-async def test_backend():
-    api_url = os.getenv("API_URL", "")
-    api_key = os.getenv("API_KEY", "")
-    if not api_url or not api_key: return {"error": "API_URL or API_KEY not set"}
-    try:
-        response = requests.get(f"{api_url}/api/health", headers={"X-API-Key": api_key}, timeout=5)
-        return {"backend_status": response.status_code, "backend_response": response.text[:100] if response.text else "No response"}
-    except Exception as e: return {"error": str(e)}
-
-@app.get("/test-signal-generator")
-async def test_signal_generator():
-    signal_url = os.getenv("SIGNAL_GENERATOR_URL", "")
-    if not signal_url: return {"error": "SIGNAL_GENERATOR_URL not set"}
-    try:
-        response = requests.get(f"{signal_url}/health", timeout=5)
-        return {"signal_generator_status": response.status_code, "signal_generator_response": response.text[:100] if response.text else "No response"}
-    except Exception as e: return {"error": str(e)}
-
 if __name__ == "__main__":
-    # Render injects the PORT environment variable
     port = int(os.environ.get("PORT", 8000))
     print(f"✅ API successfully listening on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 EOF
 
-# Start the API in the background and log the output
 python3 /tmp/api.py > /tmp/api.log 2>&1 &
 HEALTH_PID=$!
 echo "✅ Health monitor PID: $HEALTH_PID"
@@ -149,12 +127,19 @@ if [ -f "/app/CommunityTrader.mq5" ]; then
 fi
 
 # ---------------------------------------------------------
-# 3. START XVFB & VNC
+# 3. START XVFB & VNC (FIXED)
 # ---------------------------------------------------------
 echo "Starting Xvfb..."
+# CRITICAL FIX: Clear stale X11 lock files from previous crashed runs
+rm -f /tmp/.X99-lock
+rm -f /tmp/.X11-unix/X99
+
 Xvfb :99 -screen 0 1024x768x16 -ac -nolisten tcp &
 XVFB_PID=$!
-sleep 3
+sleep 5 # Give Xvfb enough time to fully initialize
+
+# CRITICAL: Explicitly export DISPLAY for all subsequent commands
+export DISPLAY=:99
 
 echo "Starting VNC server on port ${VNC_PORT}..."
 VNC_ARGS="-display :99 -forever -shared -bg -rfbport ${VNC_PORT} -noxdamage"
@@ -166,16 +151,30 @@ VNC_PID=$!
 sleep 2
 
 # ---------------------------------------------------------
-# 4. START MT5
+# 4. START MT5 (FIXED PATH & CONFIG)
 # ---------------------------------------------------------
 echo "Configuring WebRequest permissions..."
 wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v AllowWebRequest /t REG_DWORD /d 1 /f
 wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v WebRequestURL /t REG_SZ /d "${API_URL}" /f
 
+# DYNAMIC FIX: Find the MT5 executable wherever the installer put it
+echo "Searching for MT5 executable..."
+MT5_EXE=$(find /root/.wine/drive_c -name "terminal*.exe" -type f | head -n 1)
+
+if [ -z "$MT5_EXE" ]; then
+    echo "❌ ERROR: Could not find MT5 executable!"
+    echo "Installation might have failed. Listing Program Files:"
+    ls -R "/root/.wine/drive_c/Program Files/" 2>/dev/null || echo "Program Files not found."
+    exit 1
+fi
+
+echo "✅ Found MT5 executable at: $MT5_EXE"
+
+# Use Windows-style path for the config file to prevent Wine path errors
+WIN_CONFIG_PATH="C:\\Program Files\\MetaTrader 5\\config\\terminal.ini"
+
 echo "Starting MT5 Terminal (${FBS_SERVER})..."
-wine "/root/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" \
-    /config:"/root/.wine/drive_c/Program Files/MetaTrader 5/config/terminal.ini" \
-    /portable &
+wine "$MT5_EXE" /config:"$WIN_CONFIG_PATH" /portable &
 MT5_PID=$!
 
 echo "Waiting for MT5 to initialize (30 seconds)..."
