@@ -7,6 +7,7 @@ ENV WINEARCH=win64
 ENV WINEPREFIX=/root/.wine
 
 # Install Wine and dependencies
+# Install Wine and dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends dpkg && \
     dpkg --add-architecture i386 && \
@@ -22,7 +23,8 @@ RUN apt-get update && \
     python3 \
     python3-pip \
     xdotool \
-    winetricks && \
+    winetricks \
+    cabextract && \   # <-- ADD THIS LINE
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
