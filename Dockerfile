@@ -37,29 +37,20 @@ RUN mkdir -p /root/.wine/drive_c/Program\ Files/MetaTrader\ 5
 # Initialize Wine prefix properly before installing anything
 RUN xvfb-run -a wineboot --init
 
-# Download official MT5 installer
+# Install MetaTrader 5 using the Linux shell installer (as suggested)
 WORKDIR /tmp
-RUN wget --user-agent="Mozilla/5.0" -O mt5setup.exe https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe
+RUN wget https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5linux.sh \
+    && chmod +x mt5linux.sh \
+    && DISPLAY=:99 ./mt5linux.sh \
+    && rm mt5linux.sh
 
-# Run installer with manual Xvfb (Removed killall, added longer sleep)
-RUN Xvfb :99 -screen 0 1024x768x16 -ac & \
-    export DISPLAY=:99 && \
-    sleep 5 && \
-    wine mt5setup.exe /auto || echo "Installer main process exited (normal)" && \
-    echo "Waiting for background installation to complete..." && \
-    sleep 60
-
-# Verify installation (Fails the build if MT5 didn't actually install)
+# Debug check for MT5 executable (Fails build if not found)
+RUN ls -l "/root/.wine/drive_c/Program Files/MetaTrader 5/" || ls -l "/root/.wine/drive_c/Program Files (x86)/MetaTrader 5/"
 RUN test -f "/root/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" || \
     test -f "/root/.wine/drive_c/Program Files (x86)/MetaTrader 5/terminal64.exe" || \
     (echo "❌ MT5 installation failed! Executable not found." && exit 1)
 
-# Verify installation (This will FAIL the build if MT5 didn't actually install, which is what we want!)
-RUN test -f "/root/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe" || \
-    test -f "/root/.wine/drive_c/Program Files (x86)/MetaTrader 5/terminal64.exe" || \
-    (echo "❌ MT5 installation failed! Executable not found." && exit 1)
-
-# Wait for installation and set registry permissions
+# Wait/set registry permissions for MT5 to make web requests
 RUN sleep 15 && \
     wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v AllowWebRequest /t REG_DWORD /d 1 /f && \
     wine reg add "HKEY_CURRENT_USER\Software\MetaQuotes\Terminal\Common" /v WebRequestURL /t REG_SZ /d "https://ansorade-backend.onrender.com" /f && \
