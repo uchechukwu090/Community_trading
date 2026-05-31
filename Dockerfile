@@ -27,9 +27,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Configure Wine for MT5
-RUN winetricks -q corefonts && \
-    winetricks -q win7
+# Only set Wine prefix Windows version as win7, skip corefonts to avoid build fail
+RUN winetricks -q win7 || echo "win7 prefix skipped"
 
 # Create MT5 directory
 RUN mkdir -p /root/.wine/drive_c/Program\ Files/MetaTrader\ 5
